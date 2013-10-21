@@ -8,3 +8,4 @@ REM Description: I'm a lazy person, so you have to figure out the function of th
 
 python setup.py py2exe
 copy SnapTimer.* dist
+copy readme.md dist\readme.txt
