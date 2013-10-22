@@ -43,10 +43,28 @@ class State:
   def delete(self,a_t):
     raise Exception("this call is not supported in %s!"%(self.__class__.__name__))
 
+def is_int(a):
+  """Returns true if a can be an interger"""
+  try:
+    int (a)
+    return True
+  except:
+    return False
+
 class StateNull(State):
   def init(self,a_t):
+    l_hist=a_t.m_hm.get(3)
+    print "Latest Titles:"
+    for l_i in range(len(l_hist)):
+      print "=>[%d] %s"%(l_i,l_hist[l_i])
     while not a_t.m_title:
       a_t.m_title=raw_input("Please input your target: ").strip()
+    if is_int(a_t.m_title):
+      l_i=int(a_t.m_title)
+      if l_i < len(l_hist):
+        a_t.m_title=l_hist[l_i]
+    print "=>Title: "+a_t.m_title
+    a_t.m_hm.add(a_t.m_title)
     while not a_t.m_esti or int(a_t.m_esti) > 240 or int(a_t.m_esti) < 1:
       a_t.m_esti=raw_input("Please input your estimation (1-240minutes): ").strip()
     a_t.m_state=StateInited()
@@ -114,10 +132,11 @@ class StateDeleted(State):
   pass
 
 class Task:
-  def __init__(self,a_name="undef",a_tm=None,a_lm=None):
+  def __init__(self,a_name="undef",a_tm=None,a_lm=None,a_hm=None):
     self.m_name=a_name
     self.m_tm=a_tm
     self.m_lm=a_lm
+    self.m_hm=a_hm
     self.m_title=None
     self.m_esti=None
     self.m_id=None
@@ -200,6 +219,7 @@ class Logger:
 class LocalLogger(Logger):
   def __init__(self, a_fn):
     self.m_logfn=a_fn
+    open(self.m_logfn,'a').close()
 
   def log(self,a_task):
     logging.debug("LocalLogger.log...%s",a_task)
@@ -291,11 +311,37 @@ class TimerMgr:
 
   def _start_timer(self):
     subprocess.Popen("SnapTimer.exe")
+
+class HistoryMgr:
+  def __init__(self,a_fn):
+    self.m_fn=a_fn
+    if not os.path.isfile(self.m_fn):
+      l_f=open(self.m_fn,'w')
+      l_f.write('Take a 10 minutes break!\n')
+      l_f.close()
+  def add(self,a_title):
+    l_first=True
+    for line in fileinput.input(self.m_fn, inplace=True):
+      if l_first:
+        print a_title.rstrip('\n')
+        l_first=False
+      print line.rstrip('\n')
+  def get(self,a_n):
+    l_f=open(self.m_fn,'r')
+    l_i=0
+    l_line=l_f.readline()
+    l_hist=[]
+    while l_i < a_n and  l_line:
+      l_hist.append(l_line.rstrip('\n'))
+      l_line=l_f.readline()
+      l_i+=1
+    return l_hist
     
 class SelfMgr:
   def __init__(self):
     self.m_tm=TimerMgr()
     self.m_lm=LoggerMgr("tasklog.txt")
+    self.m_hm=HistoryMgr("history.txt")
     self.m_name=self.get_name("name.txt")
 
   def get_name(self, a_fn):
@@ -314,17 +360,10 @@ class SelfMgr:
     return l_n
 
   def start_task(self):
-    Task(self.m_name,self.m_tm,self.m_lm).init().start().save().show()
+    Task(self.m_name,self.m_tm,self.m_lm,self.m_hm).init().start().save().show()
 
   def end_task(self,a_id):
     Task(self.m_name,self.m_tm,self.m_lm).load(a_id).end().upload().delete()
-
-class _UT(unittest.TestCase):
-
-    def test1(self):
-      logging.debug("in test1")
-      l_rl=RemoteLogger()
-      l_rl.log(Task().init().end())
 
 def start_task():
   logging.info("Start a new task...")
@@ -333,6 +372,16 @@ def start_task():
 def end_task(a_id):
   logging.info("End task: %s",a_id)
   SelfMgr().end_task(a_id)
+
+class _UT(unittest.TestCase):
+    def test1(self):
+      logging.debug("in test1")
+      l_rl=HistoryMgr('history.txt')
+      l_rl.add('test history1')
+      l_rl.add('test history2')
+      l_rl.add('test history3')
+      print l_rl.get(2)
+      print l_rl.get(4)
 
 import sys
 def main(argv):
