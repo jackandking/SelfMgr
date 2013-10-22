@@ -6,9 +6,6 @@
 # Newpy ID: 180
 # Description: I'm a lazy person, so you have to figure out the function of this script by yourself.
 
-
-## Unit Test
-
 import unittest
 import logging
 
@@ -24,8 +21,62 @@ socket.setdefaulttimeout(10)
 
 if os.environ.get('SELFMGR_DEBUG'):
   _selfmgr_server_='localhost:8080'
+  print "use local server in debug mode"
 else:
   _selfmgr_server_='selfmgr.sinaapp.com'
+
+_version_=0.1
+
+class State:
+  def init(self,a_t):
+    raise Exception("this call is not supported in this state!")
+  def start(self,a_t):
+    raise Exception("this call is not supported in this state!")
+  def load(self,a_t,a_id):
+    raise Exception("this call is not supported in this state!")
+  def end(self,a_t):
+    raise Exception("this call is not supported in this state!")
+  def save(self,a_t):
+    raise Exception("this call is not supported in this state!")
+
+class StateNull(State):
+  def init(self,a_t):
+    a_t.m_title=raw_input("Please input your target: ").strip()
+    a_t.m_esti=raw_input("Please input your estimation (minutes): ").strip()
+    a_t.m_state=StateInited()
+  def load(self,a_t,a_id):
+    a_t.m_lm.load(a_id,a_t)
+    if a_t.m_result != "None":
+      a_t.m_state=StateEnded()
+    else:
+      a_t.m_state=StateStarted()
+
+class StateInited(State):
+  def start(self,a_t):
+    a_t.m_id=str(int(time()))
+    a_t.m_dt=strftime('%Y-%m-%d %H:%M:%S')
+    a_t.m_tm.start(a_t)
+    a_t.m_state=StateStarted()
+
+class StateStarted(State):
+  def save(self,a_t):
+    a_t.m_lm.llog(a_t)
+    a_t.m_state=StateSaved()
+  def end(self,a_t):
+    a_t.m_result=raw_input("Have you done the task below\n\t"+a_t.m_title+"\n\t[y/n]").strip()
+    if a_t.m_result != 'y':
+      a_t.m_result='n'
+    a_t.m_state=StateEnded()
+
+class StateEnded(State):
+  def save(self,a_t):
+    a_t.m_lm.rlog(a_t)
+    a_t.m_state=StateSaved()
+  def end(self,a_t):
+    pass
+
+class StateSaved(State):
+  pass
 
 class Task:
   def __init__(self,a_name="undef",a_tm=None,a_lm=None):
@@ -37,18 +88,26 @@ class Task:
     self.m_id=None
     self.m_dt=None
     self.m_result=None
+    self.m_state=StateNull()
+
   def init(self):
-    self.m_title=raw_input("Please input your target: ").strip()
-    self.m_esti=raw_input("Please input your estimation (minutes): ").strip()
-    self.m_id=str(int(time()))
-    self.m_dt=strftime('%Y-%m-%d %H:%M:%S')
+    self.m_state.init(self)
     return self
+  def start(self):
+    self.m_state.start(self)
+    return self
+  def save(self):
+    self.m_state.save(self)
+    return self
+  def load(self,a_id):
+    self.m_state.load(self,a_id)
+    return self
+  def end(self):
+    self.m_state.end(self)
+    return self
+
   def endbat(self):
     return "End_"+self.m_id+".bat"
-  def inited(self):
-    return self.m_title!= None
-  def valid(self):
-    return self.m_result != None
   def create_endbat(self):
     l_bat=open(self.endbat(),'w')
     if os.path.isfile("SelfMgr.py"):
@@ -64,26 +123,10 @@ class Task:
     except:
       logging.warning("Endbat delete failed...%s",self.endbat())
     return self
-  def start(self):
-    self.m_tm.start(self)
-    self.m_lm.log(self)
-    return self
-  def end(self):
-    if self.inited():
-      self.m_result=raw_input("Have you done the task below\n\t"+self.m_title+"\n\t[y/n]").strip()
-      if self.m_result != 'y':
-        self.m_result='n'
-    return self
-  def save(self):
-    self.m_lm.log(self)
-    return self
   def __str__(self):
     return "Name=%s:ID=%s:DateTime=%s:Title=%s:Minutes=%s:Result=%s\n"%(self.m_name,self.m_id,self.m_dt,self.m_title ,self.m_esti,str(self.m_result))
   def show(self):
     print self
-  def load(self,a_id):
-    self.m_lm.load(a_id,self)
-    return self
 
   def encode(self):
     l_hash={"name":self.m_name,
@@ -113,43 +156,39 @@ class Logger:
 class LocalLogger(Logger):
   def __init__(self, a_fn):
     self.m_logfn=a_fn
+
   def log(self,a_task):
-    if a_task.valid():
-      l_t=Task()
-      for l_line in fileinput.input(self.m_logfn, inplace=True):
-        if l_t.decode(l_line).m_id == a_task.m_id:
-          logging.debug("Remove succeeded...%s",a_task)
-        else:
-          print l_line,
-    else:
-      l_f=open(self.m_logfn,'a')
-      l_f.write(str(a_task))
-      l_f.close()
+    logging.debug("LocalLogger.log...%s",a_task)
+    l_f=open(self.m_logfn,'a')
+    l_f.write(str(a_task))
+    l_f.close()
+
   def load(self,a_id,a_task):
-    l_f=open(self.m_logfn,'r')
-    l_line=l_f.readline()
-    if not l_line:
-      logging.error("Load nothing from "+self.m_logfn)
-    while l_line:
-      a_task.decode(l_line)
-      if a_task.m_id == a_id:
-        return True 
-      l_line=l_f.readline()
-    logging.error("Task not found for ID "+a_id)
-    a_task.m_id=a_id
-    return False
-  def remove(self,a_task):
-    l_t=Task()
+    logging.debug("LocalLogger.load...%s",a_id)
+    l_found=False
     for l_line in fileinput.input(self.m_logfn, inplace=True):
-      if l_t.decode(l_line).m_id == a_task.m_id:
-        logging.debug("Remove succeeded...%s",a_task)
+      l_task=Task()
+      if not l_found and Task().decode(l_line).m_id == a_id:
+        a_task.decode(l_line)
+        l_found=True
+        logging.debug("Found Task...%s",a_id)
       else:
         print l_line,
 
+    if not l_found:
+      raise Exception("Task not found for ID "+a_id)
+    return True
+
 class RemoteLogger(Logger):
+  def __init__(self):
+    self.m_proxyfn='proxy.txt'
   def log(self,a_task):
     l_ret='ko'
     try:
+      if os.path.isfile(self.m_proxyfn):
+        proxy = urllib2.ProxyHandler({'http': open(self.m_proxyfn).readline().strip()})
+        opener = urllib2.build_opener(proxy)
+        urllib2.install_opener(opener)
       params = urllib.urlencode(a_task.encode())
       f = urllib2.urlopen("http://"+_selfmgr_server_+"/upload", params)
       l_ret=f.read()
@@ -168,10 +207,11 @@ class LoggerMgr(Logger):
   def __init__(self,a_fn):
     self.m_ll=LocalLogger(a_fn)
     self.m_rl=RemoteLogger()
-  def log(self,a_task):
-    if a_task.valid() and self.m_rl.log(a_task):
-      logging.debug("Try to remove...%s",a_task)
-      self.m_ll.remove(a_task)
+  def llog(self,a_task):
+    self.m_ll.log(a_task)
+  def rlog(self,a_task):
+    if self.m_rl.log(a_task):
+      a_task.delete_endbat()
     else:
       self.m_ll.log(a_task)
   def load(self,a_id,a_task):
@@ -227,10 +267,10 @@ class SelfMgr:
     return l_n
 
   def start_task(self):
-    Task(self.m_name,self.m_tm,self.m_lm).init().start().show()
+    Task(self.m_name,self.m_tm,self.m_lm).init().start().save().show()
 
   def end_task(self,a_id):
-    Task(self.m_name,self.m_tm,self.m_lm).load(a_id).end().save().delete_endbat()
+    Task(self.m_name,self.m_tm,self.m_lm).load(a_id).end().save()
 
 class _UT(unittest.TestCase):
 
@@ -249,7 +289,7 @@ def end_task(a_id):
 
 import sys
 def main(argv):
-  logging.basicConfig(filename='runlog.txt',format='%(asctime)s;%(levelname)s:%(message)s',level=logging.INFO)
+  logging.basicConfig(filename='runlog.txt',format='%(asctime)s;%(levelname)s:%(message)s',level=logging.DEBUG)
   if len(argv) < 2:
     #unittest.main(verbosity=2)
     start_task()
