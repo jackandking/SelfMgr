@@ -25,31 +25,40 @@ if os.environ.get('SELFMGR_DEBUG'):
 else:
   _selfmgr_server_='selfmgr.sinaapp.com'
 
-_version_=0.1
+_version_=1.0
 
 class State:
   def init(self,a_t):
-    raise Exception("this call is not supported in this state!")
+    raise Exception("this call is not supported in %s!"%(self.__class__.__name__))
   def start(self,a_t):
-    raise Exception("this call is not supported in this state!")
+    raise Exception("this call is not supported in %s!"%(self.__class__.__name__))
   def load(self,a_t,a_id):
-    raise Exception("this call is not supported in this state!")
+    raise Exception("this call is not supported in %s!"%(self.__class__.__name__))
   def end(self,a_t):
-    raise Exception("this call is not supported in this state!")
+    raise Exception("this call is not supported in %s!"%(self.__class__.__name__))
+  def upload(self,a_t):
+    raise Exception("this call is not supported in %s!"%(self.__class__.__name__))
   def save(self,a_t):
-    raise Exception("this call is not supported in this state!")
+    raise Exception("this call is not supported in %s!"%(self.__class__.__name__))
+  def delete(self,a_t):
+    raise Exception("this call is not supported in %s!"%(self.__class__.__name__))
 
 class StateNull(State):
   def init(self,a_t):
-    a_t.m_title=raw_input("Please input your target: ").strip()
-    a_t.m_esti=raw_input("Please input your estimation (minutes): ").strip()
+    while not a_t.m_title:
+      a_t.m_title=raw_input("Please input your target: ").strip()
+    while not a_t.m_esti or int(a_t.m_esti) > 240 or int(a_t.m_esti) < 1:
+      a_t.m_esti=raw_input("Please input your estimation (1-240minutes): ").strip()
     a_t.m_state=StateInited()
   def load(self,a_t,a_id):
-    a_t.m_lm.load(a_id,a_t)
-    if a_t.m_result != "None":
-      a_t.m_state=StateEnded()
+    if a_t.m_lm.load(a_id,a_t):
+      if a_t.m_result != "None":
+        a_t.m_state=StateEnded()
+      else:
+        a_t.m_state=StateStarted()
     else:
-      a_t.m_state=StateStarted()
+      a_t.m_id=a_id
+      a_t.m_state=StateNotFound()
 
 class StateInited(State):
   def start(self,a_t):
@@ -69,13 +78,39 @@ class StateStarted(State):
     a_t.m_state=StateEnded()
 
 class StateEnded(State):
-  def save(self,a_t):
-    a_t.m_lm.rlog(a_t)
-    a_t.m_state=StateSaved()
+  def upload(self,a_t):
+    if a_t.m_lm.rlog(a_t):
+      a_t.m_state=StateUploaded()
+    else:
+      if a_t.m_lm.llog(a_t):
+        a_t.m_state=StateSaved()
+      else:
+        a_t.m_state=StateFailed()
   def end(self,a_t):
     pass
 
 class StateSaved(State):
+  def delete(self,a_t):
+    pass
+
+class StateUploaded(State):
+  def delete(self,a_t):
+    a_t.delete_endbat()
+    a_t.m_state=StateDeleted()
+
+class StateFailed(State):
+  pass
+
+class StateNotFound(State):
+  def delete(self,a_t):
+    a_t.delete_endbat()
+    a_t.m_state=StateDeleted()
+  def end(self,a_t):
+    pass
+  def upload(self,a_t):
+    pass
+
+class StateDeleted(State):
   pass
 
 class Task:
@@ -104,6 +139,12 @@ class Task:
     return self
   def end(self):
     self.m_state.end(self)
+    return self
+  def upload(self):
+    self.m_state.upload(self)
+    return self
+  def delete(self):
+    self.m_state.delete(self)
     return self
 
   def endbat(self):
@@ -145,9 +186,10 @@ class Task:
       self.m_esti=l_m.group(5)
       self.m_result=l_m.group(6)
       logging.debug("Decode succeeded...%s",self)
+      return True
     else:
       logging.error("Decode failed from str: %s",a_str)
-    return self
+      return False
 
 class Logger:
   def log(self,a_task):
@@ -159,16 +201,22 @@ class LocalLogger(Logger):
 
   def log(self,a_task):
     logging.debug("LocalLogger.log...%s",a_task)
-    l_f=open(self.m_logfn,'a')
-    l_f.write(str(a_task))
-    l_f.close()
+    try:
+      l_f=open(self.m_logfn,'a')
+      l_f.write(str(a_task))
+      l_f.close()
+      return True
+    except:
+      return False
 
   def load(self,a_id,a_task):
     logging.debug("LocalLogger.load...%s",a_id)
     l_found=False
     for l_line in fileinput.input(self.m_logfn, inplace=True):
       l_task=Task()
-      if not l_found and Task().decode(l_line).m_id == a_id:
+      if not l_task.decode(l_line):
+        continue
+      if not l_found and l_task.m_id == a_id:
         a_task.decode(l_line)
         l_found=True
         logging.debug("Found Task...%s",a_id)
@@ -176,7 +224,9 @@ class LocalLogger(Logger):
         print l_line,
 
     if not l_found:
-      raise Exception("Task not found for ID "+a_id)
+      logging.error("Task not found...%s",a_id)
+      #raise Exception("Task not found for ID "+a_id)
+      return False
     return True
 
 class RemoteLogger(Logger):
@@ -208,12 +258,9 @@ class LoggerMgr(Logger):
     self.m_ll=LocalLogger(a_fn)
     self.m_rl=RemoteLogger()
   def llog(self,a_task):
-    self.m_ll.log(a_task)
+    return self.m_ll.log(a_task)
   def rlog(self,a_task):
-    if self.m_rl.log(a_task):
-      a_task.delete_endbat()
-    else:
-      self.m_ll.log(a_task)
+    return self.m_rl.log(a_task)
   def load(self,a_id,a_task):
     return self.m_ll.load(a_id,a_task)
 
@@ -250,27 +297,25 @@ class SelfMgr:
     self.m_name=self.get_name("name.txt")
 
   def get_name(self, a_fn):
-    l_n="undef"
-    try:
-      if os.path.isfile(a_fn):
-        l_f=open(a_fn,'r')
-        l_n=l_f.readline().rstrip()
-        l_f.close()
-      else:
+    l_n=None
+    if os.path.isfile(a_fn):
+      l_f=open(a_fn,'r')
+      l_n=l_f.readline().rstrip()
+      l_f.close()
+    else:
+      while not l_n:
         l_n=raw_input("First time use, please input your name: ").strip()
-        logging.info("Welcome %s",l_n)
-        l_f=open(a_fn,'w')
-        l_f.write(l_n)
-        l_f.close()
-    except:
-      logging.warning("Exception during read/write %s",a_fn)
+      logging.info("Welcome <%s>",l_n)
+      l_f=open(a_fn,'w')
+      l_f.write(l_n)
+      l_f.close()
     return l_n
 
   def start_task(self):
     Task(self.m_name,self.m_tm,self.m_lm).init().start().save().show()
 
   def end_task(self,a_id):
-    Task(self.m_name,self.m_tm,self.m_lm).load(a_id).end().save()
+    Task(self.m_name,self.m_tm,self.m_lm).load(a_id).end().upload().delete()
 
 class _UT(unittest.TestCase):
 
