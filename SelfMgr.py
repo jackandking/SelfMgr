@@ -174,7 +174,9 @@ class Task:
         "datetime":self.m_dt,
         "title":self.m_title,
         "minutes":self.m_esti,
-        "result":self.m_result}
+        "result":self.m_result,
+        "version":_version_
+        }
     return l_hash
   def decode(self,a_str):
     l_m=re.match("Name=(.*):ID=(\d+):DateTime=(.*):Title=(.*):Minutes=(\d+):Result=(.*)", a_str)
