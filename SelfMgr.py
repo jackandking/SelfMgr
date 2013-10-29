@@ -109,7 +109,7 @@ class StateEnded(State):
 
 class StateSaved(State):
   def delete(self,a_t):
-    pass
+    a_t.kill_timer()
 
 class StateUploaded(State):
   def delete(self,a_t):
