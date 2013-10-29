@@ -114,6 +114,7 @@ class StateSaved(State):
 class StateUploaded(State):
   def delete(self,a_t):
     a_t.delete_endbat()
+    a_t.kill_timer()
     a_t.m_state=StateDeleted()
 
 class StateFailed(State):
@@ -122,6 +123,7 @@ class StateFailed(State):
 class StateNotFound(State):
   def delete(self,a_t):
     a_t.delete_endbat()
+    a_t.kill_timer()
     a_t.m_state=StateDeleted()
   def end(self,a_t):
     pass
@@ -143,6 +145,7 @@ class Task:
     self.m_dt=None
     self.m_result=None
     self.m_state=StateNull()
+    self.m_pid=None
 
   def init(self):
     self.m_state.init(self)
@@ -176,15 +179,21 @@ class Task:
       l_bat.write("SelfMgr.exe "+self.m_id)
     l_bat.close()
     return self
+  def kill_timer(self):
+    try:
+      subprocess.call("taskkill /PID "+self.m_pid, shell=True)
+    except:
+      logging.error("kill timer failed...%s",self.m_pid)
+    return self
   def delete_endbat(self):
     try:
       os.remove(self.endbat())
       logging.debug("Endbat delete succeeded...%s",self.endbat())
     except:
-      logging.warning("Endbat delete failed...%s",self.endbat())
+      logging.error("Endbat delete failed...%s",self.endbat())
     return self
   def __str__(self):
-    return "Name=%s:ID=%s:DateTime=%s:Title=%s:Minutes=%s:Result=%s\n"%(self.m_name,self.m_id,self.m_dt,self.m_title ,self.m_esti,str(self.m_result))
+    return "Name=%s:ID=%s:PID=%s:DateTime=%s:Title=%s:Minutes=%s:Result=%s\n"%(self.m_name,self.m_id,self.m_pid,self.m_dt,self.m_title ,self.m_esti,str(self.m_result))
   def show(self):
     print self
 
@@ -198,14 +207,15 @@ class Task:
         }
     return l_hash
   def decode(self,a_str):
-    l_m=re.match("Name=(.*):ID=(\d+):DateTime=(.*):Title=(.*):Minutes=(\d+):Result=(.*)", a_str)
+    l_m=re.match("Name=(.*):ID=(\d+):PID=(\d+):DateTime=(.*):Title=(.*):Minutes=(\d+):Result=(.*)", a_str)
     if l_m:
       self.m_name=l_m.group(1)
       self.m_id=l_m.group(2)
-      self.m_dt=l_m.group(3)
-      self.m_title=l_m.group(4)
-      self.m_esti=l_m.group(5)
-      self.m_result=l_m.group(6)
+      self.m_pid=l_m.group(3)
+      self.m_dt=l_m.group(4)
+      self.m_title=l_m.group(5)
+      self.m_esti=l_m.group(6)
+      self.m_result=l_m.group(7)
       logging.debug("Decode succeeded...%s",self)
       return True
     else:
@@ -293,7 +303,7 @@ class TimerMgr:
   def start(self,a_task):
     a_task.create_endbat()
     self._adjust_config(a_task)
-    self._start_timer()
+    self._start_timer(a_task)
 
   def _adjust_config(self,a_task):
     for line in fileinput.input(self.m_config, inplace=True):
@@ -309,8 +319,9 @@ class TimerMgr:
       else:
         print line.rstrip('\n')
 
-  def _start_timer(self):
-    subprocess.Popen("SnapTimer.exe")
+  def _start_timer(self,a_task):
+    p=subprocess.Popen("SnapTimer.exe")
+    a_task.m_pid=str(p.pid)
 
 class HistoryMgr:
   def __init__(self,a_fn):
