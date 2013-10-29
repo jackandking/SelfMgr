@@ -53,7 +53,7 @@ def is_int(a):
 
 class StateNull(State):
   def init(self,a_t):
-    l_hist=a_t.m_hm.get(3)
+    l_hist=a_t.m_hm.get(10)
     print "Latest Titles:"
     for l_i in range(len(l_hist)):
       print "=>[%d] %s"%(l_i,l_hist[l_i])
