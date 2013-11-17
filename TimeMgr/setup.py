@@ -1,4 +1,4 @@
 from distutils.core import setup
 import py2exe
 
-setup(console=['SelfMgr.py'])
+setup(console=['TimeMgr.py'])

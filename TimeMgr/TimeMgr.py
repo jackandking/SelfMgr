@@ -173,10 +173,10 @@ class Task:
     return "End_"+self.m_id+".bat"
   def create_endbat(self):
     l_bat=open(self.endbat(),'w')
-    if os.path.isfile("SelfMgr.py"):
-      l_bat.write("SelfMgr.py "+self.m_id)
+    if os.path.isfile("TimeMgr.py"):
+      l_bat.write("TimeMgr.py "+self.m_id)
     else:
-      l_bat.write("SelfMgr.exe "+self.m_id)
+      l_bat.write("TimeMgr.exe "+self.m_id)
     l_bat.close()
     return self
   def kill_timer(self):
@@ -348,7 +348,7 @@ class HistoryMgr:
       l_i+=1
     return l_hist
     
-class SelfMgr:
+class TimeMgr:
   def __init__(self):
     self.m_tm=TimerMgr()
     self.m_lm=LoggerMgr("tasklog.txt")
@@ -378,11 +378,11 @@ class SelfMgr:
 
 def start_task():
   logging.info("Start a new task...")
-  SelfMgr().start_task()
+  TimeMgr().start_task()
 
 def end_task(a_id):
   logging.info("End task: %s",a_id)
-  SelfMgr().end_task(a_id)
+  TimeMgr().end_task(a_id)
 
 class _UT(unittest.TestCase):
     def test1(self):

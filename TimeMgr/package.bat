@@ -6,11 +6,11 @@ REM Newbat Version: 0.1
 REM Newbat ID: 5
 REM Description: I'm a lazy person, so you have to figure out the function of this script by yourself.
 
-copy dist SelfMgr
-del SelfMgr\history.txt
-del SelfMgr\name.txt
-del SelfMgr\runlog.txt
-del SelfMgr\tasklog.txt
-del SelfMgr\proxy.txt
-del SelfMgr\End_*.bat
-zip -r SelfMgr.zip SelfMgr
+copy dist TimeMgr
+del TimeMgr\history.txt
+del TimeMgr\name.txt
+del TimeMgr\runlog.txt
+del TimeMgr\tasklog.txt
+del TimeMgr\proxy.txt
+del TimeMgr\End_*.bat
+zip -r TimeMgr.zip TimeMgr
