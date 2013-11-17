@@ -5,13 +5,7 @@ It's an utility to manage yourself better.
 
 Usage
 -----
-Double click SelfMgr.exe (In the first time, you will be required to provide your name. You may edit name.txt afterwards).
-
-Proxy
------
-To use proxy, just add proxy.txt in the same folder as SelfMgr.exe.
-Proxy file content sample:
-    127.0.0.1:80
+Refer to sub folders, e.g. TimeMgr
 
 HomePage
 --------
