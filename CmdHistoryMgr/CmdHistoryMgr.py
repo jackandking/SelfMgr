@@ -11,6 +11,7 @@ import yaml
 from datetime import date
 import subprocess
 import sys
+import socket
 
 ## Unit Test
 
@@ -57,12 +58,24 @@ class CmdHistoryMgr:
     self.m_LHF=LocalHistoryFile(self.m_local)
     self.m_AHF=AllHistoryFile(self.m_all)
   def config_system(self):
-    if os.name == 'nt':
-      if not has_clink():
+    if os.name == 'nt': 
+      if not os.path.exists(os.path.join(os.environ['LOCALAPPDATA'],"clink")):
         print "please install %s first then try again!" %( download('https://clink.googlecode.com/files/','clink_0.4_setup.exe'))
         sys.exit(1)
       self.m_local=os.path.join(os.environ['LOCALAPPDATA'],"\\clink\\.history")
       print self.m_local
+  def sync(self):
+    l_b=self.m_LHF.get_new_block()
+    l_bs=self.upload(l_b).download(self.m_AHF.get_last_tag())
+    self.m_AHF.append(l_bs)
+    self.m_LHF.append(l_b.get_tag())
+    #self.m_AHF.get_last_tag_by_host(socket.gethostname())
+    return self
+
+  def upload(self, a_block):
+	  return self
+  def download(self, a_tag):
+	  return l_content
 
 def has_clink():
     cmd = ['clink', 'set']
@@ -89,7 +102,8 @@ def _clean_check(cmd, target):
         raise
 
 def download_file_curl(url, target):
-    cmd = ['curl', url, '--silent', '--output', target]
+    #cmd = ['curl', url, '--silent', '--output', target]
+    cmd = ['curl', url, '--output', target]
     _clean_check(cmd, target)
 
 def has_curl():
