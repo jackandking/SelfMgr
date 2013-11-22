@@ -25,19 +25,43 @@ class HistoryFile:
   pass
 
 class LocalHistoryFile(HistoryFile):
-  pass
+  def get_new_block(self):
+    l_f=open(self.m_filename)
+    l_line=l_f.readline()
+    l_lines=[]
+    while l_line:
+      l_lines.append(l_line)
+      if HistoryBlockTag().claim(l_line):
+        l_lines.clear()
+      l_line=l_f.readline()
+    return HistoryBlock(l_lines)
+
+
 
 class AllHistoryFile(HistoryFile):
-  pass
+  def get_last_tag(self):
+    if os.path.exists(self.m_filename):
+      l_f=open(self.m_filename)
+      return HistoryBlockTag(l_f.readlines()[-1])
+    else:
+      return HistoryBlockTag()
 
 class HistoryBlock:
-  pass
+  def __init__(self, a_lines):
+    self.m_lines=a_lines
+    self.m_tag=HistoryBlockTag()
 
 class HistoryLine:
   pass
 
 class HistoryBlockTag:
-  pass
+  def __init__(self, a_line=None):
+    self.m_line=a_line
+  def claim(self, a_str):
+    if a_str[:9] == "SyncBlock":
+      return True
+    else:
+      return False
 
 g_config="""
 nt:
@@ -62,8 +86,8 @@ class CmdHistoryMgr:
       if not os.path.exists(os.path.join(os.environ['LOCALAPPDATA'],"clink")):
         print "please install %s first then try again!" %( download('https://clink.googlecode.com/files/','clink_0.4_setup.exe'))
         sys.exit(1)
-      self.m_local=os.path.join(os.environ['LOCALAPPDATA'],"\\clink\\.history")
-      print self.m_local
+      self.m_local=os.environ['LOCALAPPDATA']+"\\clink\\.history"
+      print "localfile:"+self.m_local
   def sync(self):
     l_b=self.m_LHF.get_new_block()
     l_bs=self.upload(l_b).download(self.m_AHF.get_last_tag())
@@ -74,8 +98,10 @@ class CmdHistoryMgr:
 
   def upload(self, a_block):
 	  return self
+
   def download(self, a_tag):
-	  return l_content
+    l_content='test\nSyncBlock:'
+    return l_content
 
 def has_clink():
     cmd = ['clink', 'set']
@@ -195,7 +221,7 @@ class _UT(unittest.TestCase):
     def test1(self):
       l_c=CmdHistoryMgr()
       print l_c.m_home
-      #l_c.save()
+      l_c.sync()
       #self.failUnless(os.path.isfile(l_c.tmpfile()))
 
 def main():
