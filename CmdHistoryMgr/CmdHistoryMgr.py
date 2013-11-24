@@ -22,7 +22,11 @@ logging.basicConfig(format='%(levelname)s:%(message)s',level=logging.DEBUG)
 class HistoryFile:
   def __init__(self,a_fn):
     self.m_filename=a_fn
-  pass
+  def append(self, a_content):
+    l_f=open(self.m_filename,'a')
+    l_f.write(a_content)
+    return self
+
 
 class LocalHistoryFile(HistoryFile):
   def get_new_block(self):
@@ -50,6 +54,8 @@ class HistoryBlock:
   def __init__(self, a_lines):
     self.m_lines=a_lines
     self.m_tag=HistoryBlockTag()
+  def get_tag(self):
+    return self.m_tag
 
 class HistoryLine:
   pass
@@ -57,6 +63,8 @@ class HistoryLine:
 class HistoryBlockTag:
   def __init__(self, a_line=None):
     self.m_line=a_line
+  def __str__(self):
+    return str(self.m_line)
   def claim(self, a_str):
     if a_str[:9] == "SyncBlock":
       return True
@@ -74,14 +82,18 @@ posix:
 
 class CmdHistoryMgr:
   def __init__(self):
-    self.config_system()
     l_config=yaml.load(g_config)
     print yaml.dump(l_config)
     self.m_home=l_config[os.name]['home']
+
+    self.config_system()
+
     self.m_all=os.path.join(self.m_home,l_config[os.name]['all'])
     self.m_LHF=LocalHistoryFile(self.m_local)
     self.m_AHF=AllHistoryFile(self.m_all)
   def config_system(self):
+    if not os.path.isdir(self.m_home):
+      os.makedirs(self.m_home)
     if os.name == 'nt': 
       if not os.path.exists(os.path.join(os.environ['LOCALAPPDATA'],"clink")):
         print "please install %s first then try again!" %( download('https://clink.googlecode.com/files/','clink_0.4_setup.exe'))
@@ -92,7 +104,7 @@ class CmdHistoryMgr:
     l_b=self.m_LHF.get_new_block()
     l_bs=self.upload(l_b).download(self.m_AHF.get_last_tag())
     self.m_AHF.append(l_bs)
-    self.m_LHF.append(l_b.get_tag())
+    self.m_LHF.append(str(l_b.get_tag()))
     #self.m_AHF.get_last_tag_by_host(socket.gethostname())
     return self
 
