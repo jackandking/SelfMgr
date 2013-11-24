@@ -12,6 +12,18 @@ from datetime import date
 import subprocess
 import sys
 import socket
+import time
+import re
+import urllib,urllib2
+socket.setdefaulttimeout(10)
+
+if os.environ.get('SELFMGR_DEBUG'):
+  _selfmgr_server_='localhost:8080'
+  print "use local server in debug mode"
+else:
+  _selfmgr_server_='selfmgr.sinaapp.com'
+
+_version_=1.0
 
 ## Unit Test
 
@@ -23,8 +35,13 @@ class HistoryFile:
   def __init__(self,a_fn):
     self.m_filename=a_fn
   def append(self, a_content):
-    l_f=open(self.m_filename,'a')
-    l_f.write(a_content)
+    if a_content:
+      l_f=open(self.m_filename,'a')
+      l_f.write("\n"+a_content)
+      l_f.close()
+      logging.debug("append sth into "+self.m_filename)
+    else:
+      logging.warning("ignore None when appending.")
     return self
 
 
@@ -36,7 +53,7 @@ class LocalHistoryFile(HistoryFile):
     while l_line:
       l_lines.append(l_line)
       if HistoryBlockTag().claim(l_line):
-        l_lines.clear()
+        l_lines[:]=[]
       l_line=l_f.readline()
     return HistoryBlock(l_lines)
 
@@ -56,13 +73,41 @@ class HistoryBlock:
     self.m_tag=HistoryBlockTag()
   def get_tag(self):
     return self.m_tag
+  def empty(self):
+    return len(self.m_lines) == 0
+  def urlencode(self):
+    l_hash={'content':"\n".join(self.m_lines)+str(self.m_tag)}
+    return l_hash
 
 class HistoryLine:
   pass
 
+g_block_tag="SyncBlock"
 class HistoryBlockTag:
   def __init__(self, a_line=None):
-    self.m_line=a_line
+    if a_line:
+      self.m_line=a_line
+      self.decode()
+    else:
+      self.m_host=socket.gethostname()
+      self.m_time=time.time()
+      self.encode()
+  def decode(self):
+    l_m=re.match(g_block_tag+':(\w+):(\d+)',self.m_line)
+    if l_m:
+      self.m_host=l_m.group(1)
+      self.m_time=l_m.group(2)
+    else:
+      raise Exception("decode failed: "+self.m_line)
+    return self
+  def encode(self):
+    if self.m_host and self.m_time:
+      self.m_line="%s:%s:%d"%(g_block_tag,self.m_host,self.m_time)
+    else:
+      raise Exception("encode failed: "+self.m_host+","+self.m_time)
+  def urlencode(self):
+    l_hash={'content':self.m_line}
+    return l_hash
   def __str__(self):
     return str(self.m_line)
   def claim(self, a_str):
@@ -102,18 +147,42 @@ class CmdHistoryMgr:
       print "localfile:"+self.m_local
   def sync(self):
     l_b=self.m_LHF.get_new_block()
-    l_bs=self.upload(l_b).download(self.m_AHF.get_last_tag())
-    self.m_AHF.append(l_bs)
-    self.m_LHF.append(str(l_b.get_tag()))
+    if l_b.empty():
+      logging.warning("nothing to sync.")
+      return self
+    if self.upload(l_b):
+      self.m_LHF.append(str(l_b.get_tag()))
+    l_bs=self.download(self.m_AHF.get_last_tag())
+    if l_bs:
+      self.m_AHF.append(l_bs)
     #self.m_AHF.get_last_tag_by_host(socket.gethostname())
     return self
 
   def upload(self, a_block):
-	  return self
+    l_ret='ko'
+    try:
+      params = urllib.urlencode(a_block.urlencode())
+      f = urllib2.urlopen("http://"+_selfmgr_server_+"/cmdhistorymgr/upload", params)
+      l_ret=f.read()
+    except:
+      logging.error("Execption when upload")
+
+    if l_ret == 'ok':
+      logging.info("Upload succeeded...%s",a_block)
+      return True
+    else:
+      logging.warning("Upload failed...%s",a_block)
+      return False
 
   def download(self, a_tag):
-    l_content='test\nSyncBlock:'
-    return l_content
+    l_ret=None
+    try:
+      params = urllib.urlencode(a_tag.urlencode())
+      f = urllib2.urlopen("http://"+_selfmgr_server_+"/cmdhistorymgr/download", params)
+      l_ret=f.read()
+    except:
+      logging.error("Execption when download")
+    return l_ret
 
 def has_clink():
     cmd = ['clink', 'set']
