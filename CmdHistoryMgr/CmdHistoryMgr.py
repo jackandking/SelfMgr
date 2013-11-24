@@ -63,7 +63,9 @@ class AllHistoryFile(HistoryFile):
   def get_last_tag(self):
     if os.path.exists(self.m_filename):
       l_f=open(self.m_filename)
-      return HistoryBlockTag(l_f.readlines()[-1])
+      l_t=HistoryBlockTag(l_f.readlines()[-1])
+      logging.info("last tag: "+str(l_t))
+      return l_t
     else:
       return HistoryBlockTag()
 
@@ -76,7 +78,7 @@ class HistoryBlock:
   def empty(self):
     return len(self.m_lines) == 0
   def urlencode(self):
-    l_hash={'content':"\n".join(self.m_lines)+str(self.m_tag)}
+    l_hash={'content':"\n".join(self.m_lines)+"\n"+str(self.m_tag)}
     return l_hash
 
 class HistoryLine:
@@ -106,7 +108,7 @@ class HistoryBlockTag:
     else:
       raise Exception("encode failed: "+self.m_host+","+self.m_time)
   def urlencode(self):
-    l_hash={'content':self.m_line}
+    l_hash={'tag':self.m_line}
     return l_hash
   def __str__(self):
     return str(self.m_line)
@@ -155,6 +157,8 @@ class CmdHistoryMgr:
     l_bs=self.download(self.m_AHF.get_last_tag())
     if l_bs:
       self.m_AHF.append(l_bs)
+    else:
+      logging.warning("nothing downloaded.")
     #self.m_AHF.get_last_tag_by_host(socket.gethostname())
     return self
 
@@ -299,8 +303,9 @@ def download(download_base, file_name, to_dir=os.curdir, downloader_factory=get_
 
 class _UT(unittest.TestCase):
 
-    def test1(self):
+    def test_upload(self):
       l_c=CmdHistoryMgr()
+      l_c.m_LHF.append("testcmd")
       print l_c.m_home
       l_c.sync()
       #self.failUnless(os.path.isfile(l_c.tmpfile()))
