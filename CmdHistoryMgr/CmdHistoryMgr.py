@@ -37,7 +37,7 @@ class HistoryFile:
   def append(self, a_content):
     if a_content:
       l_f=open(self.m_filename,'a')
-      l_f.write("\n"+a_content)
+      l_f.write(a_content+'\n')
       l_f.close()
       logging.debug("append sth into "+self.m_filename)
     else:
@@ -78,7 +78,7 @@ class HistoryBlock:
   def empty(self):
     return len(self.m_lines) == 0
   def urlencode(self):
-    l_hash={'content':"\n".join(self.m_lines)+"\n"+str(self.m_tag)}
+    l_hash={'content':"".join(self.m_lines)+"\n"+str(self.m_tag)}
     return l_hash
 
 class HistoryLine:
