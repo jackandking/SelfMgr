@@ -310,6 +310,10 @@ class _UT(unittest.TestCase):
       l_c.sync()
       #self.failUnless(os.path.isfile(l_c.tmpfile()))
 
+    def test_sync(self):
+      l_c=CmdHistoryMgr()
+      l_c.sync()
+
 def main():
     unittest.main(verbosity=2)
 
