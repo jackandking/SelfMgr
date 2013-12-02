@@ -95,7 +95,7 @@ class HistoryBlockTag:
       self.m_time=time.time()
       self.encode()
   def decode(self):
-    l_m=re.match(g_block_tag+':(\w+):(\d+)',self.m_line)
+    l_m=re.match(g_block_tag+':([-\w]+):(\d+)',self.m_line)
     if l_m:
       self.m_host=l_m.group(1)
       self.m_time=l_m.group(2)
@@ -150,7 +150,7 @@ class CmdHistoryMgr:
   def sync(self):
     l_b=self.m_LHF.get_new_block()
     if l_b.empty():
-      logging.warning("nothing to sync.")
+      logging.warning("nothing to sync as no new cmd in local file.")
       return self
     if self.upload(l_b):
       self.m_LHF.append(str(l_b.get_tag()))
@@ -214,7 +214,7 @@ def _clean_check(cmd, target):
 
 def download_file_curl(url, target):
     #cmd = ['curl', url, '--silent', '--output', target]
-    cmd = ['curl', url, '--output', target]
+    cmd = ['curl', url,'-k', '--output', target]
     _clean_check(cmd, target)
 
 def has_curl():
@@ -302,6 +302,10 @@ def download(download_base, file_name, to_dir=os.curdir, downloader_factory=get_
     return os.path.realpath(saveto)
 
 class _UT(unittest.TestCase):
+
+    def test_hbt(self):
+      l_b=HistoryBlockTag('SyncBlock:ping-PC:1385817487')
+      l_b.decode()
 
     def test_upload(self):
       l_c=CmdHistoryMgr()
