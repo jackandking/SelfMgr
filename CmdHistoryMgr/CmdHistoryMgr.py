@@ -75,6 +75,8 @@ class HistoryBlock:
     self.m_tag=HistoryBlockTag()
   def get_tag(self):
     return self.m_tag
+  def size(self):
+    return len(self.m_lines)
   def empty(self):
     return len(self.m_lines) == 0
   def urlencode(self):
@@ -172,10 +174,10 @@ class CmdHistoryMgr:
       logging.error("Execption when upload")
 
     if l_ret == 'ok':
-      logging.info("Upload succeeded...%s",a_block)
+      logging.info("Upload %d lines succeeded...",a_block.size())
       return True
     else:
-      logging.warning("Upload failed...%s",a_block)
+      logging.warning("Upload failed...%s",a_block.get_tag())
       return False
 
   def download(self, a_tag):
@@ -186,6 +188,7 @@ class CmdHistoryMgr:
       l_ret=f.read()
     except:
       logging.error("Execption when download")
+    logging.info("Download %d lines succeeded...",l_ret.count('\n'))
     return l_ret
 
 def has_clink():
