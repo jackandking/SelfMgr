@@ -80,7 +80,7 @@ class HistoryBlock:
   def empty(self):
     return len(self.m_lines) == 0
   def urlencode(self):
-    l_hash={'content':"".join(self.m_lines)+"\n"+str(self.m_tag)}
+    l_hash={'content':"".join(self.m_lines)+str(self.m_tag)}
     return l_hash
 
 class HistoryLine:
@@ -125,7 +125,7 @@ nt:
   home: c:\\SelfMgr\\CmdHistoryMgr
   all: allhistory_%s.txt
 posix:
-  home: ~/
+  home: /tmp
   all: .allhistory_%s
 """%(date.today().year, date.today().year)
 
@@ -149,6 +149,12 @@ class CmdHistoryMgr:
         sys.exit(1)
       self.m_local=os.environ['LOCALAPPDATA']+"\\clink\\.history"
       print "localfile:"+self.m_local
+    elif os.name == 'posix':
+      self.m_local=os.environ['HOME']+"/.bash_history"
+      print "localfile:"+self.m_local
+    else:
+      logging.error("OS not supported.")
+      os.exit(1)
   def sync(self):
     l_b=self.m_LHF.get_new_block()
     if l_b.empty():
