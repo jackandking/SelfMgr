@@ -150,12 +150,18 @@ class CmdHistoryMgr:
     logging.info("allfile:"+self.m_all)
 
   def sync(self):
+    return self.sync_lh().sync_ah()
+
+  def sync_lh(self):
     l_b=self.m_LHF.get_new_block()
     if l_b.empty():
       logging.warning("nothing to sync as no new cmd in local file.")
       return self
     if self.upload(l_b):
       self.m_LHF.append(str(l_b.get_tag()))
+    return self
+
+  def sync_ah(self):
     l_bs=self.download()
     if l_bs:
       self.m_AHF.append(l_bs)
