@@ -135,8 +135,11 @@ class CmdHistoryMgr:
       self.m_home=os.environ['HOME']
       logging.info("home:"+self.m_home)
       if os.environ['SHELL'][-3] == 'a':
-        os.path.exists(os.path.join(os.environ['LOCALAPPDATA'],"clink")):
         self.m_local=os.environ['HOME']+"/.bash_history"
+      elif os.environ['SHELL'][-3] == 'z':
+        self.m_local=os.environ['HOME']+"/.history"
+      else:
+        logging.error("Shell not supported.")
     else:
       logging.error("OS not supported.")
       os.exit(1)
@@ -153,7 +156,7 @@ class CmdHistoryMgr:
       return self
     if self.upload(l_b):
       self.m_LHF.append(str(l_b.get_tag()))
-    l_bs=self.download(self.m_AHF.get_last_tag())
+    l_bs=self.download()
     if l_bs:
       self.m_AHF.append(l_bs)
     else:
@@ -177,7 +180,9 @@ class CmdHistoryMgr:
       logging.warning("Upload failed...%s",a_block.get_tag())
       return False
 
-  def download(self, a_tag):
+  def download(self, a_tag=None):
+    if not a_tag:
+      a_tag=self.m_AHF.get_last_tag()
     l_ret=None
     try:
       params = urllib.urlencode(a_tag.urlencode())
