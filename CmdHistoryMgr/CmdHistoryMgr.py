@@ -7,7 +7,6 @@
 # Description: this utility will be used to store and sync all my input to all kinds consoles: cmd.exe. bash, zsh and etc.
 
 import os
-import yaml
 from datetime import date
 import subprocess
 import sys
@@ -120,41 +119,33 @@ class HistoryBlockTag:
     else:
       return False
 
-g_config="""
-nt:
-  home: c:\\SelfMgr\\CmdHistoryMgr
-  all: allhistory_%s.txt
-posix:
-  home: /tmp
-  all: .allhistory_%s
-"""%(date.today().year, date.today().year)
-
 class CmdHistoryMgr:
   def __init__(self):
-    l_config=yaml.load(g_config)
-    print yaml.dump(l_config)
-    self.m_home=l_config[os.name]['home']
-
     self.config_system()
-
-    self.m_all=os.path.join(self.m_home,l_config[os.name]['all'])
     self.m_LHF=LocalHistoryFile(self.m_local)
     self.m_AHF=AllHistoryFile(self.m_all)
   def config_system(self):
-    if not os.path.isdir(self.m_home):
-      os.makedirs(self.m_home)
     if os.name == 'nt': 
+      self.m_home="c:\\SelfMgr\\CmdHistoryMgr"
       if not os.path.exists(os.path.join(os.environ['LOCALAPPDATA'],"clink")):
         print "please install %s first then try again!" %( download('https://clink.googlecode.com/files/','clink_0.4_setup.exe'))
         sys.exit(1)
       self.m_local=os.environ['LOCALAPPDATA']+"\\clink\\.history"
-      print "localfile:"+self.m_local
     elif os.name == 'posix':
-      self.m_local=os.environ['HOME']+"/.bash_history"
-      print "localfile:"+self.m_local
+      self.m_home=os.environ['HOME']
+      logging.info("home:"+self.m_home)
+      if os.environ['SHELL'][-3] == 'a':
+        os.path.exists(os.path.join(os.environ['LOCALAPPDATA'],"clink")):
+        self.m_local=os.environ['HOME']+"/.bash_history"
     else:
       logging.error("OS not supported.")
       os.exit(1)
+    if not os.path.isdir(self.m_home):
+      os.makedirs(self.m_home)
+    self.m_all=os.path.join(self.m_home,'allhistory_%s'%(date.today.year))
+    logging.info("localfile:"+self.m_local)
+    logging.info("allfile:"+self.m_all)
+
   def sync(self):
     l_b=self.m_LHF.get_new_block()
     if l_b.empty():
