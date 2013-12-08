@@ -32,7 +32,7 @@ import sys
 import urllib,urllib2
 import re
 import socket
-socket.setdefaulttimeout(13)
+socket.setdefaulttimeout(30)
 import logging
 logging.basicConfig(format='%(levelname)s:%(message)s',level=logging.DEBUG)
 import requests
