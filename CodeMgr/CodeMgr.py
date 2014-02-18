@@ -7,6 +7,7 @@
 # Description: CodeMgr will manage all my code files. create/upload/download/sample.
 # Change log:
 #2013-12-03 4:59:23 PM 2.0 init from newpy.py
+#2014-02-18 20:29:20 2.1 rm yaml for old version py
 
 __version__='2.0'
 
@@ -34,29 +35,43 @@ import urllib,urllib2
 import re
 import socket
 socket.setdefaulttimeout(13)
-import yaml
 import logging
 logging.basicConfig(format='%(levelname)s:%(message)s',level=logging.DEBUG)
 
-header='''
-py: |
-  # -*- coding: utf-8 -*-
-  # Author: %s
-  # DateTime: %s
-  # Generator: https://github.com/jackandking/SelfMgr/CodeMgr
-  # Newxx Version: %s
-  # Newxx ID: %s
-  # Description: I'm a lazy person, so you have to figure out the function of this script by yourself.
-zsh: |
-  #!/usr/zsh
-  # Author: %s
-  # DateTime: %s
-  # Generator: https://github.com/jackandking/SelfMgr/CodeMgr
-  # Newxx Version: %s
-  # Newxx ID: %s
-  # Description: I'm a lazy person, so you have to figure out the function of this script by yourself.
+g_header={
+'py':''' 
+# -*- coding: utf-8 -*-
+# Author: %s
+# DateTime: %s
+# Generator: https://github.com/jackandking/SelfMgr/CodeMgr
+# Newxx Version: %s
+# Newxx ID: %s
+# Description: I'm a lazy person, so you have to figure out the function of this script by yourself.
+''',
+'zsh':''' 
+#!/usr/zsh
+# Author: %s
+# DateTime: %s
+# Generator: https://github.com/jackandking/SelfMgr/CodeMgr
+# Newxx Version: %s
+# Newxx ID: %s
+# Description: I'm a lazy person, so you have to figure out the function of this script by yourself.
+''',
+'*':''' 
+# Author: %s
+# DateTime: %s
+# Generator: https://github.com/jackandking/SelfMgr/CodeMgr
+# Newxx Version: %s
+# Newxx ID: %s
+# Description: I'm a lazy person, so you have to figure out the function of this script by yourself.
 '''
-g_header=yaml.load(header)
+}
+def get_header(ext,header=g_header):
+  try:
+    return header[ext]
+  except KeyError:
+    print "No header defined for "+ext+", use default header."
+    return header["*"]
 
 sample_blocks = '''
 python:
@@ -93,7 +108,7 @@ def write_sample_to_file(ext,newxx_id=0,
                          ):
     if filename is None: file=sys.stdout
     else: file=open(filename,'w')
-    print >> file, g_header[ext]%(_author_, datetime.now(), __version__, newxx_id)
+    print >> file, get_header(ext)%(_author_, datetime.now(), __version__, newxx_id)
     print >> file, ""
     if file != sys.stdout: file.close()
 
