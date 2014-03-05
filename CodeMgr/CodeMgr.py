@@ -94,9 +94,13 @@ def write_sample_to_file(newxx_id=0,
 
 def search_sample(option, opt_str, value, parser):
     params = urllib.urlencode({'which': __version__, 'who': _author_, 'keywords': value})
+    print "Keywords: "+value
     try:
         f = urllib2.urlopen("http://"+_newxx_server_+"/newxx/search", params)
         print f.read()
+        print "..."
+        print "http://"+_newxx_server_+"/newxx/<newxxid>"
+        print "http://"+_newxx_server_+"/newxx/view/<id>"
     except urllib2.HTTPError, e:
         print e.reason
     except:
