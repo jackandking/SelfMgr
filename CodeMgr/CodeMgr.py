@@ -25,7 +25,7 @@ if os.environ.get('SELFMGR_DEBUG'):
   _newxx_server_='localhost:8080'
   print "use local server in debug mode"
 else:
-  _newxx_server_='newxx.sinaapp.com'
+  _newxx_server_='newxx-jackandking.rhcloud.com'
 
 
 from datetime import datetime
