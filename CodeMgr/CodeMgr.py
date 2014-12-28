@@ -66,33 +66,13 @@ g_header={
 # Description: I'm a lazy person, so you have to figure out the function of this script by yourself.
 '''
 }
-def get_header(ext,header=g_header):
+def gen_header(ext, newxx_id):
   try:
-    return header[ext]
+    return g_header[ext]%(_author_, datetime.now(), __version__, newxx_id)
   except KeyError:
-    print "No header defined for "+ext+", use default header."
-    return header["*"]
+    print "No header defined for ["+ext+"], use default header."
+    return g_header['*']%(_author_, datetime.now(), __version__, newxx_id)
 
-sample_blocks = '''
-python:
-  0: 
-    - Hello World
-    - >
-world=raw_input("Hello:")
-World='python is case sensitive'
-print "Hello",world + "!"
-  1: 
-    - If-Else inside While
-    - >
-from time import time
-while not None:
-    if int(time()) % 2:
-            print "True"
-            continue
-    else:
-            break
-'''
-    
 
 def get_file_content(a_url):
   try:
@@ -103,23 +83,28 @@ def get_file_content(a_url):
   except:
     return "#timeout, please refer to "+a_url
 
-def write_sample_to_file(ext,newxx_id=0,
+def write_sample_to_file(newxx_id=0,
                          filename=None,
                          ):
-    if filename is None: file=sys.stdout
-    else: file=open(filename,'w')
-    print >> file, get_header(ext)%(_author_, datetime.now(), __version__, newxx_id)
+    ext = os.path.splitext(filename)[1]
+    file=open(filename,'w')
+    print >> file, gen_header(ext,newxx_id)
     print >> file, ""
-    if file != sys.stdout: file.close()
+    file.close()
 
-def list_key_sample(option, opt_str, value, parser):
-    pass
-def list_sample(option, opt_str, value, parser):
-    print "Here are the available samples:"
-    print "---------------------------------------"
-    for i in sorted(sample_blocks.iterkeys()):
-        print i,"=>",sample_blocks[i][0]
-    print "---------------------------------------"
+def search_sample(option, opt_str, value, parser):
+    params = urllib.urlencode({'which': __version__, 'who': _author_, 'keywords': value})
+    print "Keywords: "+value
+    try:
+        f = urllib2.urlopen("http://"+_newxx_server_+"/newxx/search", params)
+        print f.read()
+        print "..."
+        print "http://"+_newxx_server_+"/newxx/<newxxid>"
+        print "http://"+_newxx_server_+"/newxx/view/<id>"
+    except urllib2.HTTPError, e:
+        print e.reason
+    except:
+        print "Unexpected error:", sys.exc_info()[0]
     sys.exit()
 
 def submit_record(what,verbose):
@@ -197,9 +182,8 @@ def upload_file(option, opt_str, value, parser):
 def main():
     usage = "usage: %prog [options] filename"
     parser = OptionParser(usage)
-    parser.add_option("-e", "--ext", type="string", dest="ext", metavar="a-language-ext",help='one of py,pl,bat,sh',default='py')
-    parser.add_option("-k", "--key", type="string", dest="key_sample", metavar="key-sample",help='a key word for samples.', action='callback',callback=list_key_sample)
-    parser.add_option("-l", "--list", help="list all the available samples.", action="callback", callback=list_sample)
+    #parser.add_option("-k", "--key", type="string", dest="key_sample", metavar="key-sample",help='a key word for samples.', action='callback',callback=list_key_sample)
+    parser.add_option("-s", "--search", type="string", dest="search", metavar="search-sample",help='search samples with the key word.', action='callback',callback=search_sample)
     parser.add_option("-u", "--upload", type="string", dest="filename",
                       help='''upload file to newxx server as sample to others. the file must have a valid newxx ID.''',
                       action="callback", callback=upload_file)
@@ -216,13 +200,12 @@ def main():
                       action="store_false", dest="record", default=True)
     (options, args) = parser.parse_args()
     verbose=options.verbose
-    ext=options.ext
 
     if options.test is None:
         if len(args) != 1:
             parser.error("incorrect number of arguments, try -h")
 
-        filename=args[0]+'.'+ext
+        filename=args[0]
         if options.overwrite is None and os.path.isfile(filename): sys.exit("error: "+filename+" already exist!")
 
     else:
@@ -231,7 +214,7 @@ def main():
     if options.record: newxx_id=submit_record(filename,verbose)
     else: newxx_id=0
 
-    write_sample_to_file(ext,newxx_id=newxx_id,
+    write_sample_to_file(newxx_id=newxx_id,
                          filename=filename)
     if verbose and filename: print "generate",filename,"successfully."
 
