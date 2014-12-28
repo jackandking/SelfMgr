@@ -20,7 +20,7 @@ if os.environ.get('SELFMGR_DEBUG'):
   _selfmgr_server_='localhost:8080'
   print "use local server in debug mode"
 else:
-  _selfmgr_server_='selfmgr.sinaapp.com'
+  _selfmgr_server_='newxx-jackandking.rhcloud.com'
 
 _version_=1.0
 
@@ -174,7 +174,7 @@ class CmdHistoryMgr:
     l_ret='ko'
     try:
       params = urllib.urlencode(a_block.urlencode())
-      f = urllib2.urlopen("http://"+_selfmgr_server_+"/cmdhistorymgr/upload", params)
+      f = urllib2.urlopen("https://"+_selfmgr_server_+"/cmdhistorymgr/upload", params)
       l_ret=f.read()
     except:
       logging.error("Execption when upload")
@@ -192,7 +192,7 @@ class CmdHistoryMgr:
     l_ret=None
     try:
       params = urllib.urlencode(a_tag.urlencode())
-      f = urllib2.urlopen("http://"+_selfmgr_server_+"/cmdhistorymgr/download", params)
+      f = urllib2.urlopen("https://"+_selfmgr_server_+"/cmdhistorymgr/download", params)
       l_ret=f.read()
     except:
       logging.error("Execption when download")
